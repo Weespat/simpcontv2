@@ -99,6 +99,14 @@ def normalize_value(value):
         logger.error(f"Failed to convert value: {value}")
         return 0.0
 
+def parse_float(value):
+    """Parse a float without clamping, returning 0.0 on error"""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        logger.error(f"Failed to convert value: {value}")
+        return 0.0
+
 def handle_stick_input(x, y, stick_type="LEFT", player_id='player1'):
     """Handle analog stick input with improved handling"""
     x = normalize_value(x)
@@ -165,9 +173,9 @@ def handle_touchpad_input(x, y, player_id='player1'):
         
     mouse_state = mouse_states[player_id]
     
-    # Normalize input values to -1.0 to 1.0 range
-    x = normalize_value(x)
-    y = normalize_value(y)
+    # Parse incoming values without clamping
+    x = parse_float(x)
+    y = parse_float(y)
     
     # Initialize tracking data if needed
     if 'prev_x' not in mouse_state:
