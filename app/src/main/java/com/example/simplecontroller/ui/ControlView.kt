@@ -62,6 +62,9 @@ class ControlView(
     private var touchPreviousDy = 0f  // Store previous movement for smoothing
     private var touchInitialized = false
     private var touchpadSensitivity = 1.0f
+    // Accumulated position for absolute touchpad reporting
+    private var accumTouchX = 0f
+    private var accumTouchY = 0f
 
     // Touchpad smoothing factors
     private val touchSmoothingFactor = 0.5f  // 0.0 = no smoothing, 1.0 = maximum smoothing
@@ -309,6 +312,8 @@ class ControlView(
                         touchPreviousDx = 0f
                         touchPreviousDy = 0f
                         touchInitialized = true // Set to true immediately - don't skip first move
+                        accumTouchX = 0f
+                        accumTouchY = 0f
 
                         // Don't use MOUSE_RESET as it causes position jumps
                         // NetworkClient.send("MOUSE_RESET")
@@ -360,6 +365,10 @@ class ControlView(
                         val scaledDx = applyTouchpadScaling(smoothedDx)
                         val scaledDy = applyTouchpadScaling(smoothedDy)
 
+                        // Accumulate movement for absolute reporting
+                        accumTouchX = (accumTouchX + scaledDx).coerceIn(-1f, 1f)
+                        accumTouchY = (accumTouchY + scaledDy).coerceIn(-1f, 1f)
+
                         // Rate limit sending to avoid overwhelming the server
                         val currentTime = System.currentTimeMillis()
                         if (currentTime - lastTouchpadSendTime < touchpadSendIntervalMs) {
@@ -368,12 +377,14 @@ class ControlView(
                         lastTouchpadSendTime = currentTime
 
                         // Send via UDP for lower latency - use consistent protocol
-                        UdpClient.sendTouchpadPosition(scaledDx, scaledDy)
+                        UdpClient.sendTouchpadPosition(accumTouchX, accumTouchY)
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         // Reset tracking
                         touchPreviousDx = 0f
                         touchPreviousDy = 0f
+                        accumTouchX = 0f
+                        accumTouchY = 0f
 
                         // Send a final zero movement to ensure mouse stops
                         UdpClient.sendTouchpadPosition(0f, 0f)
